@@ -5,86 +5,102 @@ Advent of code
 """
 import numpy as np
 
-def dec4_part1():
+def dec4_part1():    
+    numbers=np.loadtxt('day4_file.txt', dtype=int, max_rows=1, delimiter=",")
+    boards=np.loadtxt('day4_file.txt', dtype=int, skiprows=1)
 
-    #with open('day4_file.txt') as f:
-        #numbers = f.readline()
+    flat_board=boards.flatten()
+    marked_board=np.ones(len(flat_board))
+
+    shape=(int(len(boards)/len(boards[0])), len(boards[0]), len(boards[0]))
+    boards_reshaped=np.reshape(flat_board, shape)
+
+    draw=0
+    bingo=False
+    while bingo==False:
+        indices=np.where(flat_board==numbers[draw])
+        marked_board[indices[0]]=0
+
+        bingo, winner_board=check4bingo(np.reshape(marked_board, shape))
+        draw+=1
     
-    numbers=np.loadtxt('day4_file.txt', dtype=str, max_rows=1)
-    boards=np.loadtxt('day4_file.txt', dtype=str, skiprows=1)
-    print(len(boards))
-    print(n_boards)
-    #for i in range(len(np.loadtxt('day4_file.txt', dtype=str, skiprows=1))/6)
-    boards=np.loadtxt('day4_file.txt', dtype=str, max_rows=1)
+    indices=np.reshape(marked_board, shape)[winner_board]
 
-    print(numbers)
+    return np.sum(boards_reshaped[winner_board]*indices)*numbers[draw-1]
 
 
-    #Loading the data into a matrix
-    binary_matrix=np.zeros((len(lines), len(lines[0])), dtype=int)
-    for index, number in enumerate(lines):
-        binary=number.split(' ')
-        indexes=[i for i,x in enumerate(binary[0]) if x=='1']
-        binary_matrix[index][indexes]=1
+def dec4_part2():    
+    numbers=np.loadtxt('day4_file.txt', dtype=int, max_rows=1, delimiter=",")
+    boards=np.loadtxt('day4_file.txt', dtype=int, skiprows=1)
 
-    #Finding the most occured bits:
-    final_int=['','']
-    for i in range(len(binary_matrix.T)-1):
-        most_frequent=np.bincount(binary_matrix.T[i]).argmax()
+    flat_board=boards.flatten()
+    marked_board=np.ones(len(flat_board))
 
-        if most_frequent==0:
-            final_int[0]+='0'
-            final_int[1]+='1'
-        else:
-            final_int[0]+='1'
-            final_int[1]+='0'
+    shape=(int(len(boards)/len(boards[0])), len(boards[0]), len(boards[0]))
+    boards_reshaped=np.reshape(flat_board, shape)
 
-    float_number_1= float(int(final_int[0], 2))
-    float_number_2= float(int(final_int[1], 2))
+    draw=0
+    bingo=False
+    winner_board=-1
+    while bingo==False:
+        #Marks the correct numbers
+        indices=np.where(marked_board==numbers[draw])
 
-    return float_number_1*float_number_2, np.delete(binary_matrix, -1, axis=1)
+        #flat
+        marked_board[indices[0]]=0
+        #resahped
+        marked_board=np.reshape(marked_board, (int(len(marked_board)/25),5,5))
+        #Removing the winners
+        if winner_board!=-1:
+            #print(marked_board)
+            marked_board=np.delete(marked_board,winner_board,axis=0)
+            boards_reshaped=np.delete(boards_reshaped,winner_board,axis=0)
 
+            #print(marked_board)
 
+        bingo, winner_board=check4bingo_2(marked_board)
+        marked_board=marked_board.flatten()
 
-def dec4_part2():
-    trash, matrix=dec3_part1()
+        print(bingo, winner_board)
+        
+        draw+=1
+    
+    mb_r=np.reshape(marked_board, (int(len(marked_board)/25),5,5))
 
-    matrix_oxy=np.copy(matrix.T)
-    matrix_co2=np.copy(matrix.T)
+    indices=mb_r[winner_board]
 
-    for i in range(len(matrix_oxy)):
-        most_frequent_oxy=np.bincount(matrix_oxy[i])
-        least_frequent_co2=np.bincount(matrix_co2[i])
+    return np.sum(boards_reshaped[winner_board]*indices)*numbers[draw-1]
 
-        if most_frequent_oxy[0] != most_frequent_oxy[1]:
-            #delete coloumns without the value
-            indexes_oxy=np.where(matrix_oxy[i]==most_frequent_oxy.argmin())
-            matrix_oxy = np.delete(matrix_oxy.T, indexes_oxy, axis=0)
-            matrix_oxy=matrix_oxy.T 
-        else:
-            indexes_oxy=np.where(matrix_oxy[i]==0)
-            matrix_oxy = np.delete(matrix_oxy.T, indexes_oxy, axis=0)
-            matrix_oxy=matrix_oxy.T
+def check4bingo_2(board):
+    bingo=False
+    winner=-1
+    #print(board)
+    current_winners=len(board)
+    for j in range(len(board)):
+        board_T=board[j].T
+        for i in range(board[j].shape[0]):
+            if np.sum(board[j][i])==0 or np.sum(board_T[i])==0:
+                #print(winner)
+                current_winners-=1
+                winner=j
+                #print(winner)
+                if current_winners==1:
+                    bingo=True
+                    winner=j
+                    
+    return bingo, winner
 
-        if len(matrix_co2[0])>1:
-            if  least_frequent_co2[0] != least_frequent_co2[1]:
-                indexes_co2=np.where(matrix_co2[i]==least_frequent_co2.argmax())
-                matrix_co2 = np.delete(matrix_co2.T, indexes_co2, axis=0)
-                matrix_co2=matrix_co2.T
-
-            else:
-                indexes_co2=np.where(matrix_co2[i]==1)
-                matrix_co2 = np.delete(matrix_co2.T, indexes_co2, axis=0)
-                matrix_co2=matrix_co2.T
-
-    oxy = BitArray(matrix_oxy.flatten())
-    oxy_rate=oxy.uint
-
-    co2 = BitArray(matrix_co2.flatten())
-    co2_rate=co2.uint
-
-    return oxy_rate*co2_rate
-
+def check4bingo(board):
+    bingo=False
+    winner=-1
+    for j in range(len(board)):
+        board_T=board[j].T
+        for i in range(board[j].shape[0]):
+            if np.sum(board[j][i])==0 or np.sum(board_T[i])==0:
+                bingo=True
+                winner=j
+    
+    return bingo, winner
 
 print(dec4_part1())
-#print(dec3_part2())
+print(dec4_part2())
